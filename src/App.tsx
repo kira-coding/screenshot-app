@@ -10,6 +10,7 @@ import CanvasArea from "./components/CanvasArea";
 import StatusBar from "./components/StatusBar";
 import Toast from "./components/Toast";
 import CapturePill from "./components/CapturePill";
+import RecordPill from "./components/RecordPill";
 import SettingsModal from "./components/SettingsModal";
 import { useAppStore } from "./store/appStore";
 import type { Canvas as FabricCanvas } from "fabric";
@@ -21,7 +22,10 @@ export default function App() {
   const showToast = useAppStore((s) => s.showToast);
   const isCaptureOverlay = useAppStore((s) => s.isCaptureOverlay);
   const setIsCaptureOverlay = useAppStore((s) => s.setIsCaptureOverlay);
+  const isRecordOverlay = useAppStore((s) => s.isRecordOverlay);
+  const setIsRecordOverlay = useAppStore((s) => s.setIsRecordOverlay);
   const globalShortcut = useAppStore((s) => s.globalShortcut);
+  const recordShortcut = useAppStore((s) => s.recordShortcut);
   const loadSettings = useAppStore((s) => s.loadSettings);
 
   // Load settings on mount
@@ -78,13 +82,39 @@ export default function App() {
     return () => {
       unregister(globalShortcut).catch(console.error);
     };
-  }, [globalShortcut, setIsCaptureOverlay]);
+  }, [globalShortcut, setIsCaptureOverlay, setIsRecordOverlay]);
+
+  // Register Record Shortcut
+  useEffect(() => {
+    if (!recordShortcut) return;
+    
+    register(recordShortcut, async (event) => {
+      if (event.state === "Pressed") {
+        try {
+          setIsRecordOverlay(true);
+          setIsCaptureOverlay(false);
+          const win = getCurrentWindow();
+          await win.unminimize();
+          await win.setFocus();
+        } catch (e) {
+          console.error("Failed to trigger record overlay:", e);
+        }
+      }
+    }).catch(console.error);
+
+    return () => {
+      unregister(recordShortcut).catch(console.error);
+    };
+  }, [recordShortcut, setIsRecordOverlay, setIsCaptureOverlay]);
+
+  const isAnyOverlay = isCaptureOverlay || isRecordOverlay;
 
   return (
-    <div className={`app-shell ${isCaptureOverlay ? "overlay-mode" : ""}`}>
-      {isCaptureOverlay ? (
-        <CapturePill onCapture={handleCapture} />
-      ) : (
+    <div className={`app-shell ${isAnyOverlay ? "overlay-mode" : ""}`}>
+      {isCaptureOverlay && <CapturePill onCapture={handleCapture} />}
+      {isRecordOverlay && <RecordPill />}
+      
+      {!isAnyOverlay && (
         <>
           <TitleBar />
           <div className="workspace">

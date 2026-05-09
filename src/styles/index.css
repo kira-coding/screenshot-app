@@ -256,6 +256,9 @@ body {
   position: relative;
   overflow: hidden;
   background: var(--color-canvas-bg);
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .canvas-container.show-grid {
@@ -267,6 +270,8 @@ body {
   position: absolute;
   top: 0;
   left: 0;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 /* ---------- Shape Panel (Left Sidebar) ---------- */
@@ -1143,4 +1148,137 @@ body {
   background: var(--color-surface);
   box-shadow: 0 0 0 3px var(--color-accent-bg);
   color: var(--color-accent-dark);
+}
+
+/* ---------- Record Pill Overlay ---------- */
+.record-pill-container {
+  position: fixed;
+  bottom: 24px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.record-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 8px 16px;
+  background: #E8EBEA;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 9999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  pointer-events: auto;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drag-handle {
+  color: var(--color-text-muted);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+}
+
+.record-mode-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  margin-right: 8px;
+  margin-left: 4px;
+}
+
+.record-dropdown-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.record-dropdown {
+  appearance: none;
+  background: #FFFFFF;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  padding: 6px 32px 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transition: all var(--transition-fast);
+  outline: none;
+}
+
+.record-dropdown:hover, .record-dropdown:focus {
+  border-color: var(--color-border);
+}
+
+.record-dropdown-wrapper .chevron-icon {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-secondary);
+}
+
+.record-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  transition: all var(--transition-fast);
+}
+
+.record-icon-btn:hover {
+  transform: scale(1.05);
+  color: var(--color-text-primary);
+}
+
+.record-icon-btn.active {
+  color: var(--color-accent);
+}
+
+.record-action-btn {
+  background: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: 9999px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(91,191,173,0.3);
+}
+
+.record-action-btn:hover {
+  background: var(--color-accent-dark);
+  transform: scale(1.02);
+}
+
+.record-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  transition: all var(--transition-fast);
+}
+
+.record-close-btn:hover {
+  color: var(--color-red);
+  transform: scale(1.1);
 }

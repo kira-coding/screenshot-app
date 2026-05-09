@@ -11,17 +11,23 @@ export default function SettingsModal() {
     setAutoStart, 
     globalShortcut, 
     setGlobalShortcut,
+    recordShortcut,
+    setRecordShortcut,
     showToast
   } = useAppStore();
 
   const [shortcutRecording, setShortcutRecording] = useState(false);
   const [tempShortcut, setTempShortcut] = useState(globalShortcut);
 
+  const [recordShortcutRecording, setRecordShortcutRecording] = useState(false);
+  const [recordTempShortcut, setRecordTempShortcut] = useState(recordShortcut);
+
   useEffect(() => {
     if (isSettingsOpen) {
       setTempShortcut(globalShortcut);
+      setRecordTempShortcut(recordShortcut);
     }
-  }, [isSettingsOpen, globalShortcut]);
+  }, [isSettingsOpen, globalShortcut, recordShortcut]);
 
   if (!isSettingsOpen) return null;
 
@@ -47,10 +53,23 @@ export default function SettingsModal() {
       await store.set('globalShortcut', { value: shortcut });
       await store.save();
       setGlobalShortcut(shortcut);
-      showToast("Shortcut updated successfully");
+      showToast("Screenshot shortcut updated successfully");
     } catch (err) {
       console.error("Failed to save shortcut:", err);
       showToast("Failed to save shortcut", "error");
+    }
+  };
+
+  const saveRecordShortcutToStore = async (shortcut: string) => {
+    try {
+      const store = await Store.load('settings.json');
+      await store.set('recordShortcut', { value: shortcut });
+      await store.save();
+      setRecordShortcut(shortcut);
+      showToast("Record shortcut updated successfully");
+    } catch (err) {
+      console.error("Failed to save record shortcut:", err);
+      showToast("Failed to save record shortcut", "error");
     }
   };
 
@@ -90,6 +109,37 @@ export default function SettingsModal() {
     saveShortcutToStore(newShortcut);
   };
 
+  const handleRecordKeyDown = (e: React.KeyboardEvent) => {
+    if (!recordShortcutRecording) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.key === 'Escape') {
+      setRecordShortcutRecording(false);
+      setRecordTempShortcut(recordShortcut);
+      return;
+    }
+
+    if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
+
+    const modifiers = [];
+    if (e.metaKey) modifiers.push('Command');
+    else if (e.ctrlKey) modifiers.push('Control');
+    
+    if (e.shiftKey) modifiers.push('Shift');
+    if (e.altKey) modifiers.push('Alt');
+
+    const key = e.key.toUpperCase();
+    let displayKey = key;
+    if (key === ' ') displayKey = 'Space';
+
+    const newShortcut = [...modifiers, displayKey].join('+');
+    setRecordTempShortcut(newShortcut);
+    setRecordShortcutRecording(false);
+    saveRecordShortcutToStore(newShortcut);
+  };
+
   return (
     <div className="settings-overlay" onClick={() => setIsSettingsOpen(false)}>
       <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
@@ -117,7 +167,7 @@ export default function SettingsModal() {
 
           <div className="setting-row">
             <div className="setting-info">
-              <h3>Global Shortcut</h3>
+              <h3>Screenshot Shortcut</h3>
               <p>Shortcut to open the capture tool from anywhere</p>
             </div>
             <div 
@@ -127,6 +177,21 @@ export default function SettingsModal() {
               tabIndex={0}
             >
               {shortcutRecording ? "Press shortcut... (Esc to cancel)" : tempShortcut}
+            </div>
+          </div>
+
+          <div className="setting-row">
+            <div className="setting-info">
+              <h3>Record Shortcut</h3>
+              <p>Shortcut to open the screen recorder</p>
+            </div>
+            <div 
+              className={`shortcut-recorder ${recordShortcutRecording ? 'recording' : ''}`}
+              onClick={() => setRecordShortcutRecording(true)}
+              onKeyDown={handleRecordKeyDown}
+              tabIndex={0}
+            >
+              {recordShortcutRecording ? "Press shortcut... (Esc to cancel)" : recordTempShortcut}
             </div>
           </div>
         </div>

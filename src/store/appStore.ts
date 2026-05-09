@@ -14,6 +14,8 @@ export interface AppState {
   /* Capture Overlay State */
   isCaptureOverlay: boolean;
   setIsCaptureOverlay: (v: boolean) => void;
+  isRecordOverlay: boolean;
+  setIsRecordOverlay: (v: boolean) => void;
 
   /* Mode */
   appMode: AppMode;
@@ -77,6 +79,8 @@ export interface AppState {
   /* Global Shortcut */
   globalShortcut: string;
   setGlobalShortcut: (s: string) => void;
+  recordShortcut: string;
+  setRecordShortcut: (s: string) => void;
 
   /* Active menu */
   activeMenu: string | null;
@@ -93,6 +97,8 @@ export interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   isCaptureOverlay: false,
   setIsCaptureOverlay: (v) => set({ isCaptureOverlay: v }),
+  isRecordOverlay: false,
+  setIsRecordOverlay: (v) => set({ isRecordOverlay: v }),
 
   appMode: "screenshot",
   setAppMode: (m) => set({ appMode: m, filePath: null, fileName: "Untitled", isDirty: false }),
@@ -148,6 +154,8 @@ export const useAppStore = create<AppState>((set) => ({
 
   globalShortcut: "CommandOrControl+Shift+4",
   setGlobalShortcut: (s) => set({ globalShortcut: s }),
+  recordShortcut: "CommandOrControl+Shift+R",
+  setRecordShortcut: (s) => set({ recordShortcut: s }),
 
   activeMenu: null,
   setActiveMenu: (m) => set({ activeMenu: m }),
@@ -162,6 +170,10 @@ export const useAppStore = create<AppState>((set) => ({
       const savedShortcut = await store.get<{value: string}>('globalShortcut');
       if (savedShortcut && savedShortcut.value) {
         set({ globalShortcut: savedShortcut.value });
+      }
+      const savedRecordShortcut = await store.get<{value: string}>('recordShortcut');
+      if (savedRecordShortcut && savedRecordShortcut.value) {
+        set({ recordShortcut: savedRecordShortcut.value });
       }
       
       const autoStartEnabled = await isEnabled();

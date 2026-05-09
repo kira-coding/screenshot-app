@@ -209,6 +209,8 @@ export default function CanvasArea({ onCanvasReady }: Props) {
     strokeDashArray: getStrokeDash(),
     selectable: true,
     hasControls: true,
+    objectCaching: true,
+    statefullCache: false,
   });
 
   const handleMouseDown = (e: React.MouseEvent) => {
