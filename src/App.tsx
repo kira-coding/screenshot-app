@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import * as fabric from "fabric";
 import TitleBar from "./components/TitleBar";
@@ -19,6 +20,7 @@ export default function App() {
   const canvasRef = useRef<FabricCanvas | null>(null);
   const [panelVisible, setPanelVisible] = useState(true);
   const appMode = useAppStore((s) => s.appMode);
+  const setAppMode = useAppStore((s) => s.setAppMode);
   const showToast = useAppStore((s) => s.showToast);
   const isCaptureOverlay = useAppStore((s) => s.isCaptureOverlay);
   const setIsCaptureOverlay = useAppStore((s) => s.setIsCaptureOverlay);
@@ -58,6 +60,74 @@ export default function App() {
     const win = getCurrentWindow();
     win.unminimize().then(() => win.setFocus()).catch(console.error);
   }, [showToast]);
+
+  // Tray Events
+  useEffect(() => {
+    const unlisteners: (() => void)[] = [];
+
+    const setupListeners = async () => {
+      const u1 = await listen("take_screenshot", async () => {
+        setIsCaptureOverlay(true);
+        const win = getCurrentWindow();
+        await win.unminimize();
+        await win.setFocus();
+      });
+      unlisteners.push(u1);
+
+      const u2 = await listen("open_whiteboard", async () => {
+        setAppMode("whiteboard");
+        setIsCaptureOverlay(false);
+        setIsRecordOverlay(false);
+        const win = getCurrentWindow();
+        await win.unminimize();
+        await win.setFocus();
+      });
+      unlisteners.push(u2);
+
+      const u3 = await listen("import_image", async () => {
+        setAppMode("whiteboard");
+        setIsCaptureOverlay(false);
+        setIsRecordOverlay(false);
+        const win = getCurrentWindow();
+        await win.unminimize();
+        await win.setFocus();
+        
+        try {
+          const { open } = await import("@tauri-apps/plugin-dialog");
+          const { readFile } = await import("@tauri-apps/plugin-fs");
+          const selected = await open({
+            multiple: false,
+            filters: [{ name: 'Image', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }]
+          });
+          if (selected && canvasRef?.current) {
+            const fileData = await readFile(selected as string);
+            const blob = new Blob([fileData]);
+            const url = URL.createObjectURL(blob);
+            const imgEl = new Image();
+            imgEl.onload = () => {
+              const fImg = new fabric.FabricImage(imgEl, { left: 100, top: 100, selectable: true });
+              fImg.scaleToWidth(Math.min(imgEl.width, 500));
+              canvasRef.current?.add(fImg);
+              canvasRef.current?.setActiveObject(fImg);
+              canvasRef.current?.requestRenderAll();
+              URL.revokeObjectURL(url);
+            };
+            imgEl.src = url;
+          }
+        } catch (e) {
+          console.error(e);
+          showToast("Failed to load image", "error");
+        }
+      });
+      unlisteners.push(u3);
+    };
+
+    setupListeners();
+
+    return () => {
+      unlisteners.forEach(u => u());
+    };
+  }, [setIsCaptureOverlay, setIsRecordOverlay, setAppMode, showToast]);
 
   // Register Global Shortcut
   useEffect(() => {
@@ -116,11 +186,11 @@ export default function App() {
       
       {!isAnyOverlay && (
         <>
-          <TitleBar />
+          <TitleBar canvasRef={canvasRef} />
           <div className="workspace">
             <CanvasArea onCanvasReady={setCanvas} />
             <FloatingContextMenu canvasRef={canvasRef} />
-            <MainToolbar />
+            <MainToolbar canvasRef={canvasRef} />
           </div>
           <StatusBar />
         </>

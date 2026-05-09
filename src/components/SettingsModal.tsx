@@ -3,6 +3,11 @@ import { enable, disable } from "@tauri-apps/plugin-autostart";
 import { Store } from "@tauri-apps/plugin-store";
 import { useAppStore } from "../store/appStore";
 
+// Detect macOS once at module level
+const isMac = (() => {
+  try { return navigator.userAgent.includes('Mac'); } catch { return false; }
+})();
+
 export default function SettingsModal() {
   const { 
     isSettingsOpen, 
@@ -91,9 +96,7 @@ export default function SettingsModal() {
     }
 
     const modifiers = [];
-    if (e.metaKey) modifiers.push('Command');
-    else if (e.ctrlKey) modifiers.push('Control');
-    
+    if (e.metaKey || e.ctrlKey) modifiers.push(isMac ? 'Command' : 'Control');
     if (e.shiftKey) modifiers.push('Shift');
     if (e.altKey) modifiers.push('Alt');
 
@@ -124,9 +127,7 @@ export default function SettingsModal() {
     if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
 
     const modifiers = [];
-    if (e.metaKey) modifiers.push('Command');
-    else if (e.ctrlKey) modifiers.push('Control');
-    
+    if (e.metaKey || e.ctrlKey) modifiers.push(isMac ? 'Command' : 'Control');
     if (e.shiftKey) modifiers.push('Shift');
     if (e.altKey) modifiers.push('Alt');
 

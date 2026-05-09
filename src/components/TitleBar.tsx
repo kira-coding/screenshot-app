@@ -1,12 +1,109 @@
+import { useRef, useState, RefObject } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { save, open } from "@tauri-apps/plugin-dialog";
+import { writeTextFile, readTextFile, writeFile } from "@tauri-apps/plugin-fs";
 import { useAppStore } from "../store/appStore";
+import type { Canvas as FabricCanvas } from "fabric";
 
-export default function TitleBar() {
-  const { fileName, isDirty, setIsSettingsOpen } = useAppStore();
+interface Props {
+  canvasRef?: RefObject<FabricCanvas | null>;
+}
+
+export default function TitleBar({ canvasRef }: Props) {
+  const { setIsSettingsOpen, setIsCaptureOverlay, canUndo, canRedo, showToast, setFileName, fileName, setIsDirty } = useAppStore();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleMinimize = () => invoke("minimize_window").catch(() => {});
   const handleMaximize = () => invoke("toggle_maximize").catch(() => {});
   const handleClose    = () => invoke("close_window").catch(() => {});
+
+  const handleUndo = () => {
+    const canvas = canvasRef?.current;
+    if ((canvas as any)?._historyUndo) (canvas as any)._historyUndo();
+  };
+  const handleRedo = () => {
+    const canvas = canvasRef?.current;
+    if ((canvas as any)?._historyRedo) (canvas as any)._historyRedo();
+  };
+
+  // ── Save Project (.scap) ─────────────────────────────────────────────────
+  const handleSaveProject = async () => {
+    setMenuOpen(false);
+    const canvas = canvasRef?.current;
+    if (!canvas) { showToast("No canvas to save", "error"); return; }
+    try {
+      const filePath = await save({
+        defaultPath: `${fileName || 'project'}.scap`,
+        filters: [{ name: 'ScreenshotApp Project', extensions: ['scap'] }]
+      });
+      if (!filePath) return;
+      const json = JSON.stringify({
+        version: "2.0.0",
+        app: "ScreenshotApp",
+        created: new Date().toISOString(),
+        canvas: canvas.toJSON()
+      }, null, 2);
+      await writeTextFile(filePath, json);
+      // Extract filename for display
+      const name = filePath.split(/[\\/]/).pop()?.replace('.scap', '') ?? 'project';
+      setFileName(name);
+      setIsDirty(false);
+      showToast("Project saved!");
+    } catch (e) {
+      showToast(`Save failed: ${e}`, "error");
+    }
+  };
+
+  // ── Open Project (.scap) ─────────────────────────────────────────────────
+  const handleOpenProject = async () => {
+    setMenuOpen(false);
+    const canvas = canvasRef?.current;
+    if (!canvas) { showToast("Canvas not ready", "error"); return; }
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: 'ScreenshotApp Project', extensions: ['scap'] }]
+      });
+      if (!selected) return;
+      const raw = await readTextFile(selected as string);
+      const data = JSON.parse(raw);
+      if (data.app !== "ScreenshotApp") {
+        showToast("Invalid .scap file", "error");
+        return;
+      }
+      await canvas.loadFromJSON(data.canvas);
+      canvas.requestRenderAll();
+      const name = (selected as string).split(/[\\/]/).pop()?.replace('.scap', '') ?? 'project';
+      setFileName(name);
+      setIsDirty(false);
+      showToast("Project opened!");
+    } catch (e) {
+      showToast(`Open failed: ${e}`, "error");
+    }
+  };
+
+  // ── Export as PNG ────────────────────────────────────────────────────────
+  const handleExportPng = async () => {
+    setMenuOpen(false);
+    const canvas = canvasRef?.current;
+    if (!canvas) { showToast("No canvas to export", "error"); return; }
+    try {
+      const filePath = await save({
+        defaultPath: `${fileName || 'export'}.png`,
+        filters: [{ name: 'PNG Image', extensions: ['png'] }]
+      });
+      if (!filePath) return;
+      const dataUrl = canvas.toDataURL({ format: 'png', multiplier: 2 });
+      const base64 = dataUrl.split(',')[1];
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+      await writeFile(filePath, bytes);
+      showToast("Exported as PNG!");
+    } catch (e) {
+      showToast(`Export failed: ${e}`, "error");
+    }
+  };
 
   return (
     <div className="titlebar">
@@ -20,13 +117,29 @@ export default function TitleBar() {
         <span className="titlebar-name">ScreenshotApp</span>
       </div>
 
-      {/* Left Actions */}
-      <div className="titlebar-actions">
-        <button className="titlebar-btn action-btn">
-          <CameraIcon /> Capture <ChevronDownIcon />
+      {/* File menu */}
+      <div className="titlebar-file-menu" style={{ position: 'relative', WebkitAppRegion: 'no-drag' } as any}>
+        <button className="titlebar-menu-btn" onClick={() => setMenuOpen(o => !o)}>
+          File
         </button>
-        <button className="titlebar-btn icon-only" title="Delete">
-          <TrashIcon />
+        {menuOpen && (
+          <div className="titlebar-dropdown" onMouseLeave={() => setMenuOpen(false)}>
+            <button className="dropdown-item" onClick={handleOpenProject}><FolderIcon /> Open Project…</button>
+            <button className="dropdown-item" onClick={handleSaveProject}><SaveIcon /> Save Project…</button>
+            <div className="dropdown-divider" />
+            <button className="dropdown-item" onClick={handleExportPng}><ExportIcon /> Export as PNG…</button>
+          </div>
+        )}
+      </div>
+
+      {/* Centered Capture button */}
+      <div className="titlebar-center">
+        <button
+          className="titlebar-capture-btn"
+          onClick={() => setIsCaptureOverlay(true)}
+          title="Take Screenshot"
+        >
+          <CameraIcon /> Capture
         </button>
       </div>
 
@@ -34,15 +147,10 @@ export default function TitleBar() {
 
       {/* Right Actions */}
       <div className="titlebar-actions right-actions">
-        <button className="titlebar-btn icon-only" title="Undo"><UndoIcon /></button>
-        <button className="titlebar-btn icon-only" title="Redo"><RedoIcon /></button>
+        <button className="titlebar-btn icon-only" title="Undo" disabled={!canUndo} onClick={handleUndo}><UndoIcon /></button>
+        <button className="titlebar-btn icon-only" title="Redo" disabled={!canRedo} onClick={handleRedo}><RedoIcon /></button>
         <div className="titlebar-divider" />
-        <button className="titlebar-btn icon-only" title="Copy"><CopyIcon /></button>
-        <button className="titlebar-btn icon-only" title="Print"><PrintIcon /></button>
-        <button className="titlebar-btn icon-only" title="Settings" onClick={() => setIsSettingsOpen(true)}><CommandIcon /></button>
-        <button className="titlebar-btn icon-only" title="User"><UserIcon /></button>
-        <button className="titlebar-btn icon-only" title="Wand"><WandIcon /></button>
-        <button className="titlebar-btn icon-only" title="Layout"><LayoutIcon /></button>
+        <button className="titlebar-btn icon-only" title="Settings" onClick={() => setIsSettingsOpen(true)}><SettingsIcon /></button>
       </div>
 
       {/* Window controls */}
@@ -51,9 +159,7 @@ export default function TitleBar() {
           <svg viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="7.5" width="12" height="1.5" rx="0.75"/></svg>
         </button>
         <button className="titlebar-btn" title="Maximize" onClick={handleMaximize}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <rect x="3" y="3" width="10" height="10" rx="1.5"/>
-          </svg>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="10" height="10" rx="1.5"/></svg>
         </button>
         <button className="titlebar-btn close" title="Close" onClick={handleClose}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -65,15 +171,10 @@ export default function TitleBar() {
   );
 }
 
-// Icons
-function CameraIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>; }
-function ChevronDownIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="12" height="12"><polyline points="6 9 12 15 18 9"></polyline></svg>; }
-function TrashIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>; }
+function CameraIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>; }
 function UndoIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>; }
 function RedoIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>; }
-function CopyIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>; }
-function PrintIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>; }
-function CommandIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3s0 0 0 0h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>; }
-function UserIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>; }
-function WandIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M12 3l1.912 5.813a2 2 0 001.272 1.272L21 12l-5.813 1.912a2 2 0 00-1.272 1.272L12 21l-1.912-5.813a2 2 0 00-1.272-1.272L3 12l5.813-1.912a2 2 0 001.272-1.272L12 3z"/></svg>; }
-function LayoutIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>; }
+function SettingsIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>; }
+function SaveIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>; }
+function FolderIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>; }
+function ExportIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>; }

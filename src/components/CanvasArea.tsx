@@ -51,7 +51,7 @@ export default function CanvasArea({ onCanvasReady }: Props) {
   const activeShapeRef = useRef<fabric.Object | null>(null);
 
   const {
-    activeTool, fillColor, strokeColor, opacity,
+    activeTool, setActiveTool, fillColor, strokeColor, opacity,
     strokeWidth, borderRadius, borderStyle,
     fontSize, zoom, setZoom,
     setCanUndo, setCanRedo, setIsDirty, showToast, showGrid
@@ -175,6 +175,17 @@ export default function CanvasArea({ onCanvasReady }: Props) {
       canvas.defaultCursor = "default";
       canvas.getObjects().forEach(o => { o.selectable = true; o.evented = true; });
     }
+    if (activeTool === "move") {
+      canvas.defaultCursor = "grab";
+      canvas.selection = false;
+      canvas.getObjects().forEach(o => { o.selectable = false; o.evented = false; });
+    }
+    if (activeTool === "crop") {
+      canvas.defaultCursor = "crosshair";
+      canvas.selection = false;
+      canvas.discardActiveObject();
+      canvas.requestRenderAll();
+    }
   }, [activeTool, strokeColor, strokeWidth]);
 
   // Apply zoom
@@ -215,8 +226,16 @@ export default function CanvasArea({ onCanvasReady }: Props) {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const canvas = fabricRef.current;
-    if (!canvas || activeTool === "select" || activeTool === "move" ||
-        activeTool === "pencil" || activeTool === "highlighter" || activeTool === "eraser") return;
+    if (!canvas || activeTool === "select") return;
+
+    if (activeTool === "move") {
+      canvas.setCursor("grabbing");
+      isDrawingRef.current = true;
+      originRef.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+
+    if (activeTool === "pencil" || activeTool === "highlighter" || activeTool === "eraser") return;
 
     const pt = getPointer(e);
     originRef.current = { x: pt.x, y: pt.y };
@@ -224,7 +243,22 @@ export default function CanvasArea({ onCanvasReady }: Props) {
 
     let shape: fabric.Object | null = null;
 
-    switch (activeTool) {
+    if (activeTool === "crop") {
+      shape = new fabric.Rect({
+        left: pt.x,
+        top: pt.y,
+        width: 0,
+        height: 0,
+        fill: "rgba(0,0,0,0.3)",
+        stroke: "#5BBFAD",
+        strokeWidth: 1,
+        strokeDashArray: [5, 5],
+        selectable: false,
+        evented: false,
+        data: { type: "crop-rect" }
+      });
+    } else {
+      switch (activeTool) {
       case "rect":
         shape = new fabric.Rect({
           ...commonProps(),
@@ -257,16 +291,32 @@ export default function CanvasArea({ onCanvasReady }: Props) {
         });
         break;
       case "arrow": {
-        shape = new fabric.Path(`M ${pt.x} ${pt.y} L ${pt.x} ${pt.y}`, {
-          fill: "transparent",
+        // Use a Group of Line + Triangle arrowhead — avoids Fabric7 path mutation bugs
+        const line = new fabric.Line([pt.x, pt.y, pt.x, pt.y], {
           stroke: strokeColor,
           strokeWidth,
           opacity: opacity / 100,
-          selectable: true,
-          strokeLineCap: "round",
-          strokeLineJoin: "round",
-          data: { type: "arrow" },
+          selectable: false,
+          evented: false,
         });
+        const head = new fabric.Triangle({
+          width: Math.max(10, strokeWidth * 4),
+          height: Math.max(14, strokeWidth * 5),
+          fill: strokeColor,
+          opacity: opacity / 100,
+          left: pt.x,
+          top: pt.y,
+          originX: 'center',
+          originY: 'center',
+          angle: 90,
+          selectable: false,
+          evented: false,
+        });
+        const group = new fabric.Group([line, head], {
+          selectable: true,
+        } as any);
+        (group as any).data = { type: 'arrow', ox: pt.x, oy: pt.y };
+        shape = group;
         break;
       }
       case "text": {
@@ -283,9 +333,11 @@ export default function CanvasArea({ onCanvasReady }: Props) {
         text.enterEditing();
         canvas.requestRenderAll();
         isDrawingRef.current = false;
+        setActiveTool("select"); // Switch back to select tool after adding text
         return;
       }
     }
+  }
 
     if (shape) {
       canvas.add(shape);
@@ -301,11 +353,22 @@ export default function CanvasArea({ onCanvasReady }: Props) {
     const pt = getPointer(e);
     const ox = originRef.current.x;
     const oy = originRef.current.y;
-    const w = pt.x - ox;
-    const h = pt.y - oy;
     const shape = activeShapeRef.current;
 
+    if (activeTool === "move") {
+      const deltaX = e.clientX - ox;
+      const deltaY = e.clientY - oy;
+      canvas.relativePan(new fabric.Point(deltaX, deltaY));
+      originRef.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+
+    if (!shape) return;
+    const w = pt.x - ox;
+    const h = pt.y - oy;
+
     switch (activeTool) {
+      case "crop":
       case "rect":
       case "triangle":
         shape.set({
@@ -326,21 +389,28 @@ export default function CanvasArea({ onCanvasReady }: Props) {
         (shape as fabric.Line).set({ x2: pt.x, y2: pt.y });
         break;
       case "arrow": {
-        const angle = Math.atan2(pt.y - oy, pt.x - ox);
-        const headlen = 15 + strokeWidth;
-        const x3 = pt.x - headlen * Math.cos(angle - Math.PI / 6);
-        const y3 = pt.y - headlen * Math.sin(angle - Math.PI / 6);
-        const x4 = pt.x - headlen * Math.cos(angle + Math.PI / 6);
-        const y4 = pt.y - headlen * Math.sin(angle + Math.PI / 6);
-        // Fabric 7 path format
-        (shape as any).path = [
-          ['M', ox, oy],
-          ['L', pt.x, pt.y],
-          ['M', pt.x, pt.y],
-          ['L', x3, y3],
-          ['M', pt.x, pt.y],
-          ['L', x4, y4]
-        ];
+        const group = shape as fabric.Group;
+        const data = (group as any).data || {};
+        const ox2 = data.ox ?? originRef.current.x;
+        const oy2 = data.oy ?? originRef.current.y;
+        const dx = pt.x - ox2;
+        const dy = pt.y - oy2;
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        const len = Math.sqrt(dx * dx + dy * dy);
+
+        const objects = group.getObjects();
+        const line = objects[0] as fabric.Line;
+        const head = objects[1] as fabric.Triangle;
+        const headSize = Math.max(10, strokeWidth * 4);
+        const headLen = Math.max(14, strokeWidth * 5);
+
+        // Update line end to stop short of the tip
+        const stopX = ox2 + (dx / Math.max(len, 1)) * Math.max(0, len - headLen * 0.6);
+        const stopY = oy2 + (dy / Math.max(len, 1)) * Math.max(0, len - headLen * 0.6);
+        line.set({ x1: ox2, y1: oy2, x2: stopX, y2: stopY });
+        head.set({ left: pt.x, top: pt.y, angle: angle + 90, width: headSize, height: headLen });
+        head.setCoords();
+        group.set({ left: 0, top: 0 });
         break;
       }
     }
@@ -352,10 +422,46 @@ export default function CanvasArea({ onCanvasReady }: Props) {
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
     const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    if (activeTool === "move") {
+      canvas.setCursor("grab");
+      return;
+    }
+
     const shape = activeShapeRef.current;
-    if (canvas && shape) {
-      canvas.setActiveObject(shape);
-      canvas.requestRenderAll();
+    if (shape) {
+      if (activeTool === "crop") {
+        const rect = shape.getBoundingRect();
+        // Simple crop: resize canvas to rect and reposition objects
+        // In a real app, this might be more complex, but let's do a simple version:
+        // Actually, let's just use the rect for exporting or provide feedback.
+        // For "ScreenshotApp", crop usually means "keep this part".
+        // Let's implement actual canvas resizing:
+        canvas.remove(shape);
+        
+        // Save current content as image to re-render it cropped? 
+        // Better: shift all objects and resize canvas.
+        const left = rect.left;
+        const top = rect.top;
+        const width = rect.width;
+        const height = rect.height;
+
+        if (width > 5 && height > 5) {
+          canvas.getObjects().forEach(obj => {
+            obj.left -= left;
+            obj.top -= top;
+            obj.setCoords();
+          });
+          canvas.setDimensions({ width, height });
+          canvas.requestRenderAll();
+          showToast("Canvas cropped!");
+        }
+        setActiveTool("select");
+      } else {
+        canvas.setActiveObject(shape);
+        canvas.requestRenderAll();
+      }
     }
     activeShapeRef.current = null;
   };

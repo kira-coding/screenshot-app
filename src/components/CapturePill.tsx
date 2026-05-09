@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAppStore } from "../store/appStore";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -7,11 +8,20 @@ interface Props {
 }
 
 export default function CapturePill({ onCapture }: Props) {
-  const { setIsCaptureOverlay, setAppMode, showToast } = useAppStore();
+  const { setIsCaptureOverlay, setIsRecordOverlay, setAppMode, showToast } = useAppStore();
+
+  // Make window always-on-top while the pill is visible so it floats over other apps
+  useEffect(() => {
+    invoke("set_always_on_top", { alwaysOnTop: true }).catch(console.error);
+    return () => {
+      invoke("set_always_on_top", { alwaysOnTop: false }).catch(console.error);
+    };
+  }, []);
 
   const handleCaptureFullscreen = async () => {
     try {
-      const b64 = await invoke<string>("capture_fullscreen");
+      // capture_hiding_window hides the app, waits, captures, then shows it again
+      const b64 = await invoke<string>("capture_hiding_window");
       onCapture(b64);
       setIsCaptureOverlay(false);
     } catch (e) {
@@ -34,6 +44,57 @@ export default function CapturePill({ onCapture }: Props) {
   const handleOpenCanvas = () => {
     setAppMode("whiteboard");
     setIsCaptureOverlay(false);
+  };
+
+  const handleShare = async () => {
+    try {
+      const b64 = await invoke<string>("capture_fullscreen");
+      // Convert data URL to Blob
+      const res = await fetch(b64);
+      const blob = await res.blob();
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          [blob.type]: blob
+        })
+      ]);
+      showToast("Screenshot copied to clipboard!");
+      setIsCaptureOverlay(false);
+    } catch (e) {
+      showToast(`Share failed: ${e}`, "error");
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      const b64 = await invoke<string>("capture_fullscreen");
+      const { save } = await import('@tauri-apps/plugin-dialog');
+      const { writeFile } = await import('@tauri-apps/plugin-fs');
+      
+      const filePath = await save({
+        defaultPath: `Screenshot-${Date.now()}.png`,
+        filters: [{ name: 'Image', extensions: ['png'] }]
+      });
+
+      if (filePath) {
+        // Strip data:image/png;base64,
+        const base64Data = b64.split(',')[1];
+        const binaryString = window.atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        await writeFile(filePath, bytes);
+        showToast("Screenshot saved to disk!");
+        setIsCaptureOverlay(false);
+      }
+    } catch (e) {
+      showToast(`Save failed: ${e}`, "error");
+    }
+  };
+
+  const handleSwitchToRecord = () => {
+    setIsCaptureOverlay(false);
+    setIsRecordOverlay(true);
   };
 
   const handleColorPicker = async () => {
@@ -61,7 +122,7 @@ export default function CapturePill({ onCapture }: Props) {
   return (
     <div className="capture-pill-container">
       <div className="capture-pill">
-        <button className="pill-btn" title="Share" onClick={() => showToast("Share coming soon!")}>
+        <button className="pill-btn" title="Share" onClick={handleShare}>
           <ShareIcon />
         </button>
         <button className="pill-btn" title="Fullscreen Capture" onClick={handleCaptureFullscreen}>
@@ -73,13 +134,13 @@ export default function CapturePill({ onCapture }: Props) {
         <button className="pill-btn" title="Open Canvas" onClick={handleOpenCanvas}>
           <CanvasIcon />
         </button>
-        <button className="pill-btn" title="Record GIF" onClick={() => showToast("GIF recording coming soon!")}>
+        <button className="pill-btn" title="Record GIF" onClick={handleSwitchToRecord}>
           <GifIcon />
         </button>
-        <button className="pill-btn" title="Record Video" onClick={() => showToast("Video recording coming soon!")}>
+        <button className="pill-btn" title="Record Video" onClick={handleSwitchToRecord}>
           <VideoIcon />
         </button>
-        <button className="pill-btn" title="Save" onClick={() => showToast("Save coming soon!")}>
+        <button className="pill-btn" title="Save" onClick={handleSave}>
           <SaveIcon />
         </button>
         <button className="pill-btn" title="Color Picker" onClick={handleColorPicker}>

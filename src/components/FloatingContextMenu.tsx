@@ -74,6 +74,38 @@ export default function FloatingContextMenu({ canvasRef }: Props) {
     }
   };
 
+  const updateObj = (key: string, value: any) => {
+    const canvas = canvasRef.current;
+    if (canvas && activeObj) {
+      activeObj.set(key, value);
+      canvas.requestRenderAll();
+      // force re-render to update UI values
+      setActiveObj({...activeObj} as any);
+      setActiveObj(canvas.getActiveObject() ?? null);
+    }
+  };
+
+  const handleFontSize = (delta: number) => {
+    const current = (activeObj as any).fontSize || 16;
+    updateObj('fontSize', Math.max(8, current + delta));
+  };
+
+  const handleStrokeWidth = (delta: number) => {
+    const current = activeObj.strokeWidth || 2;
+    updateObj('strokeWidth', Math.max(1, current + delta));
+  };
+
+  const handleStrokeStyle = () => {
+    const dash = activeObj.strokeDashArray;
+    if (!dash || dash.length === 0) {
+      updateObj('strokeDashArray', [10, 5]); // Dashed
+    } else if (dash[0] === 10) {
+      updateObj('strokeDashArray', [3, 4]); // Dotted
+    } else {
+      updateObj('strokeDashArray', null); // Solid
+    }
+  };
+
   return (
     <div 
       className="floating-context-menu"
@@ -87,56 +119,64 @@ export default function FloatingContextMenu({ canvasRef }: Props) {
 
       {isText ? (
         <>
-          <button className="menu-btn dropdown-btn" onClick={() => showToast("Font picker coming soon!")}>
+          <button className="menu-btn dropdown-btn">
             Inter <ChevronDownIcon />
           </button>
           <div className="menu-divider" />
-          <button className="menu-btn" onClick={() => showToast("Size decrease coming soon!")}>−</button>
-          <span className="menu-text">14</span>
-          <button className="menu-btn" onClick={() => showToast("Size increase coming soon!")}>+</button>
+          <button className="menu-btn" onClick={() => handleFontSize(-2)}>−</button>
+          <span className="menu-text">{Math.round((activeObj as any)?.fontSize || 16)}</span>
+          <button className="menu-btn" onClick={() => handleFontSize(2)}>+</button>
           <div className="menu-divider" />
-          <button className="menu-btn" style={{ fontWeight: 'bold' }}>B</button>
-          <button className="menu-btn" style={{ textDecoration: 'underline' }}>U</button>
-          <button className="menu-btn" style={{ fontStyle: 'italic' }}>I</button>
-          <button className="menu-btn" style={{ textDecoration: 'line-through' }}>S</button>
+          <button className="menu-btn" style={{ fontWeight: 'bold' }} onClick={() => updateObj('fontWeight', (activeObj as any).fontWeight === 'bold' ? 'normal' : 'bold')}>B</button>
+          <button className="menu-btn" style={{ textDecoration: 'underline' }} onClick={() => updateObj('underline', !(activeObj as any).underline)}>U</button>
+          <button className="menu-btn" style={{ fontStyle: 'italic' }} onClick={() => updateObj('fontStyle', (activeObj as any).fontStyle === 'italic' ? 'normal' : 'italic')}>I</button>
+          <button className="menu-btn" style={{ textDecoration: 'line-through' }} onClick={() => updateObj('linethrough', !(activeObj as any).linethrough)}>S</button>
           <div className="menu-divider" />
-          <button className="menu-btn"><AlignLeftIcon /></button>
-          <button className="menu-btn" style={{ textDecoration: 'underline', textDecorationColor: '#5BBFAD' }}>A</button>
-          <button className="menu-btn" onClick={() => showToast("Background color coming soon!")}><BucketIcon /></button>
+          <button className="menu-btn" onClick={() => updateObj('textAlign', 'left')}><AlignLeftIcon /></button>
+          <label className="menu-btn" style={{ textDecoration: 'underline', textDecorationColor: String((activeObj as any).fill || '#5BBFAD'), cursor: 'pointer' }}>
+            A
+            <input type="color" value={String((activeObj as any).fill || '#5BBFAD').startsWith('#') ? String((activeObj as any).fill || '#5BBFAD') : '#5BBFAD'} onChange={(e) => updateObj('fill', e.target.value)} style={{ opacity: 0, position: 'absolute', width: 0, height: 0 }} />
+          </label>
+          <label className="menu-btn" style={{ cursor: 'pointer' }}>
+            <BucketIcon />
+            <input type="color" value={String((activeObj as any).backgroundColor || '#ffffff').startsWith('#') ? String((activeObj as any).backgroundColor || '#ffffff') : '#ffffff'} onChange={(e) => updateObj('backgroundColor', e.target.value)} style={{ opacity: 0, position: 'absolute', width: 0, height: 0 }} />
+          </label>
         </>
       ) : isArrow ? (
         <>
-          <button className="menu-btn" onClick={() => showToast("Width decrease coming soon!")}>−</button>
-          <button className="menu-btn" onClick={() => showToast("Stroke style coming soon!")}><LineIcon /></button>
-          <button className="menu-btn" onClick={() => showToast("Width increase coming soon!")}>+</button>
-          <button className="menu-btn color-indicator" style={{ color: '#5BBFAD' }} onClick={() => showToast("Color coming soon!")}>
+          <button className="menu-btn" onClick={() => handleStrokeWidth(-1)}>−</button>
+          <span className="menu-text">{Math.round((activeObj as any)?.strokeWidth || 2)}</span>
+          <button className="menu-btn" onClick={() => handleStrokeWidth(1)}>+</button>
+          <label className="menu-btn color-indicator" style={{ color: String(activeObj.stroke || '#5BBFAD'), cursor: 'pointer' }}>
             <circle cx="12" cy="12" r="6" fill="currentColor" />
-          </button>
+            <input type="color" value={String(activeObj.stroke || '#5BBFAD').startsWith('#') ? String(activeObj.stroke || '#5BBFAD') : '#5BBFAD'} onChange={(e) => updateObj('stroke', e.target.value)} style={{ opacity: 0, position: 'absolute', width: 0, height: 0 }} />
+          </label>
           <div className="menu-divider" />
-          <button className="menu-btn"><DashIcon /></button>
+          <button className="menu-btn" onClick={handleStrokeStyle}><DashIcon /></button>
           <button className="menu-btn"><CapIcon /></button>
         </>
       ) : (
         // Standard Shape
         <>
-          <button className="menu-btn" onClick={() => showToast("Stroke decrease coming soon!")}>−</button>
-          <button className="menu-btn"><LineIcon /></button>
-          <button className="menu-btn" onClick={() => showToast("Stroke increase coming soon!")}>+</button>
-          <button className="menu-btn color-indicator" style={{ color: '#5BBFAD' }} onClick={() => showToast("Color coming soon!")}>
+          <button className="menu-btn" onClick={() => handleStrokeWidth(-1)}>−</button>
+          <span className="menu-text">{Math.round((activeObj as any)?.strokeWidth || 2)}</span>
+          <button className="menu-btn" onClick={() => handleStrokeWidth(1)}>+</button>
+          <label className="menu-btn color-indicator" style={{ color: String(activeObj.stroke || '#5BBFAD'), cursor: 'pointer' }}>
             <circle cx="12" cy="12" r="6" fill="currentColor" />
-          </button>
+            <input type="color" value={String(activeObj.stroke || '#5BBFAD').startsWith('#') ? String(activeObj.stroke || '#5BBFAD') : '#5BBFAD'} onChange={(e) => updateObj('stroke', e.target.value)} style={{ opacity: 0, position: 'absolute', width: 0, height: 0 }} />
+          </label>
           <div className="menu-divider" />
-          <button className="menu-btn"><DashIcon /></button>
-          <button className="menu-btn"><BucketIcon /></button>
+          <button className="menu-btn" onClick={handleStrokeStyle}><DashIcon /></button>
+          <label className="menu-btn" style={{ cursor: 'pointer' }}>
+            <BucketIcon />
+            <input type="color" value={String(activeObj.fill || '#ffffff').startsWith('#') ? String(activeObj.fill || '#ffffff') : '#ffffff'} onChange={(e) => updateObj('fill', e.target.value)} style={{ opacity: 0, position: 'absolute', width: 0, height: 0 }} />
+          </label>
         </>
       )}
 
       <div className="menu-divider" />
       <button className="menu-btn danger" onClick={handleDelete} title="Delete">
         <TrashIcon />
-      </button>
-      <button className="menu-btn" onClick={() => showToast("More options coming soon!")}>
-        <MoreIcon />
       </button>
     </div>
   );

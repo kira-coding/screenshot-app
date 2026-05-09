@@ -4,7 +4,7 @@ import { isEnabled } from '@tauri-apps/plugin-autostart';
 
 export type ToolType =
   | "select" | "move" | "rect" | "circle" | "triangle" | "hexagon"
-  | "line" | "arrow" | "pencil" | "highlighter" | "text" | "eraser";
+  | "line" | "arrow" | "pencil" | "highlighter" | "text" | "eraser" | "crop";
 
 export type CaptureMode = "region" | "window" | "fullscreen" | "scrolling";
 export type AppMode = "screenshot" | "whiteboard";
