@@ -54,7 +54,7 @@ export default function CanvasArea({ onCanvasReady }: Props) {
     activeTool, setActiveTool, fillColor, strokeColor, opacity,
     strokeWidth, borderRadius, borderStyle,
     fontSize, zoom, setZoom,
-    setCanUndo, setCanRedo, setIsDirty, showToast, showGrid
+    setCanUndo, setCanRedo, setIsDirty, showToast, showGrid, setShowGrid
   } = useAppStore();
 
   // Expose undo/redo on the canvas object for toolbar/menu to call
@@ -109,6 +109,22 @@ export default function CanvasArea({ onCanvasReady }: Props) {
         if (e.key === "z") { e.preventDefault(); doUndo(canvas, setCanUndo, setCanRedo); }
         if (e.key === "y") { e.preventDefault(); doRedo(canvas, setCanUndo, setCanRedo); }
         if (e.key === "s") { e.preventDefault(); /* handled by menubar */ }
+      } else {
+        // Tool shortcuts
+        switch (e.key.toLowerCase()) {
+          case "v": setActiveTool("select"); break;
+          case "m": setActiveTool("move"); break;
+          case "p": setActiveTool("pencil"); break;
+          case "t": setActiveTool("text"); break;
+          case "r": setActiveTool("rect"); break;
+          case "o": setActiveTool("circle"); break;
+          case "l": setActiveTool("line"); break;
+          case "a": setActiveTool("arrow"); break;
+          case "c": setActiveTool("crop"); break;
+          case "h": setActiveTool("highlighter"); break;
+          case "e": setActiveTool("eraser"); break;
+          case "g": setShowGrid(!showGrid); break;
+        }
       }
       if (e.key === "Delete" || e.key === "Backspace") {
         const objs = canvas.getActiveObjects();
@@ -488,6 +504,7 @@ export default function CanvasArea({ onCanvasReady }: Props) {
 
       {/* Zoom controls */}
       <div className="zoom-controls">
+
         <button className="zoom-btn" title="Zoom Out"
           onClick={() => setZoom(Math.max(zoom - 25, 25))}>−</button>
         <span className="zoom-level">{zoom}%</span>

@@ -26,6 +26,19 @@ export default function TitleBar({ canvasRef }: Props) {
     if ((canvas as any)?._historyRedo) (canvas as any)._historyRedo();
   };
 
+  // ── New Whiteboard ──────────────────────────────────────────────────────
+  const handleNewProject = () => {
+    setMenuOpen(false);
+    const canvas = canvasRef?.current;
+    if (!canvas) return;
+    canvas.clear();
+    canvas.backgroundColor = "#E8F0EF";
+    canvas.requestRenderAll();
+    setFileName("Untitled");
+    setIsDirty(false);
+    showToast("New whiteboard created");
+  };
+
   // ── Save Project (.scap) ─────────────────────────────────────────────────
   const handleSaveProject = async () => {
     setMenuOpen(false);
@@ -124,6 +137,8 @@ export default function TitleBar({ canvasRef }: Props) {
         </button>
         {menuOpen && (
           <div className="titlebar-dropdown" onMouseLeave={() => setMenuOpen(false)}>
+            <button className="dropdown-item" onClick={handleNewProject}><PlusIcon /> New Whiteboard</button>
+            <div className="dropdown-divider" />
             <button className="dropdown-item" onClick={handleOpenProject}><FolderIcon /> Open Project…</button>
             <button className="dropdown-item" onClick={handleSaveProject}><SaveIcon /> Save Project…</button>
             <div className="dropdown-divider" />
@@ -178,3 +193,4 @@ function SettingsIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="cu
 function SaveIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>; }
 function FolderIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>; }
 function ExportIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>; }
+function PlusIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>; }

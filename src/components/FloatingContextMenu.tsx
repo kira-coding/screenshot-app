@@ -178,6 +178,23 @@ export default function FloatingContextMenu({ canvasRef }: Props) {
       <button className="menu-btn danger" onClick={handleDelete} title="Delete">
         <TrashIcon />
       </button>
+      <div className="menu-divider" />
+      <button className="menu-btn" title="Duplicate" onClick={async () => {
+        const canvas = canvasRef.current;
+        const obj = canvas?.getActiveObject();
+        if (canvas && obj) {
+          const cloned = await obj.clone();
+          cloned.set({
+            left: obj.left! + 20,
+            top: obj.top! + 20,
+          });
+          canvas.add(cloned);
+          canvas.setActiveObject(cloned);
+          canvas.requestRenderAll();
+        }
+      }}>
+        <CopyIcon />
+      </button>
     </div>
   );
 }
@@ -192,3 +209,4 @@ function MoreIcon() { return <svg viewBox="0 0 24 24" fill="currentColor" width=
 function LineIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><line x1="4" y1="12" x2="20" y2="12"/></svg>; }
 function DashIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><line x1="4" y1="12" x2="8" y2="12"/><line x1="12" y1="12" x2="16" y2="12"/><line x1="20" y1="12" x2="21" y2="12"/></svg>; }
 function CapIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><circle cx="18" cy="12" r="3"/><line x1="4" y1="12" x2="15" y2="12"/></svg>; }
+function CopyIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>; }
