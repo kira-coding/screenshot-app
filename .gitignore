@@ -1,0 +1,11 @@
+node_modules/
+target/
+dist/
+dist-ssr/
+build/
+.env
+.DS_Store
+*.log
+src-tauri/target/
+screenshot-app/node_modules/
+screenshot-app/src-tauri/target/
