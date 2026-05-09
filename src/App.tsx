@@ -4,9 +4,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 import * as fabric from "fabric";
 import TitleBar from "./components/TitleBar";
-import MenuBar from "./components/MenuBar";
-import Toolbar from "./components/Toolbar";
-import ShapePanel from "./components/ShapePanel";
+import MainToolbar from "./components/MainToolbar";
+import FloatingContextMenu from "./components/FloatingContextMenu";
 import CanvasArea from "./components/CanvasArea";
 import StatusBar from "./components/StatusBar";
 import Toast from "./components/Toast";
@@ -80,13 +79,10 @@ export default function App() {
       ) : (
         <>
           <TitleBar />
-          <MenuBar canvasRef={canvasRef} />
-          <Toolbar canvasRef={canvasRef} panelVisible={panelVisible} onTogglePanel={() => setPanelVisible(v => !v)} />
           <div className="workspace">
-            {panelVisible && (
-              <ShapePanel canvasRef={canvasRef} />
-            )}
             <CanvasArea onCanvasReady={setCanvas} />
+            <FloatingContextMenu canvasRef={canvasRef} />
+            <MainToolbar />
           </div>
           <StatusBar />
         </>

@@ -899,3 +899,97 @@ body {
   border-radius: 0 !important;
 }
 
+/* ---------- Main Toolbar (Bottom Pill) ---------- */
+.main-toolbar-container {
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.main-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 9999px;
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+}
+
+/* ---------- Floating Context Menu ---------- */
+.floating-context-menu {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  z-index: 150;
+  animation: dropdownIn 0.15s ease;
+}
+
+.menu-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-border-dark);
+  cursor: grab;
+  padding: 0 4px;
+}
+.menu-drag-handle:active { cursor: grabbing; }
+
+.menu-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  transition: all var(--transition-fast);
+  font-size: 14px;
+}
+
+.menu-btn:hover {
+  background: var(--color-surface-2);
+}
+
+.menu-btn.danger:hover {
+  background: #FEE2E2;
+  color: var(--color-red);
+}
+
+.menu-btn.dropdown-btn {
+  width: auto;
+  padding: 0 10px;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.menu-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+  margin: 0 4px;
+}
+
+.menu-text {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 4px;
+  color: var(--color-text-primary);
+}
+
