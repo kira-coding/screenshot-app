@@ -10,6 +10,7 @@ import ShapePanel from "./components/ShapePanel";
 import CanvasArea from "./components/CanvasArea";
 import StatusBar from "./components/StatusBar";
 import Toast from "./components/Toast";
+import CapturePill from "./components/CapturePill";
 import { useAppStore } from "./store/appStore";
 import type { Canvas as FabricCanvas } from "fabric";
 
@@ -18,10 +19,34 @@ export default function App() {
   const [panelVisible, setPanelVisible] = useState(true);
   const appMode = useAppStore((s) => s.appMode);
   const showToast = useAppStore((s) => s.showToast);
+  const isCaptureOverlay = useAppStore((s) => s.isCaptureOverlay);
+  const setIsCaptureOverlay = useAppStore((s) => s.setIsCaptureOverlay);
 
   const setCanvas = useCallback((c: FabricCanvas) => {
     canvasRef.current = c;
   }, []);
+
+  const handleCapture = useCallback((b64: string) => {
+    if (canvasRef.current && b64) {
+      const imgEl = new Image();
+      imgEl.onload = () => {
+        const fImg = new fabric.FabricImage(imgEl, {
+          left: 0,
+          top: 0,
+          selectable: true,
+        });
+        canvasRef.current?.clear();
+        canvasRef.current?.add(fImg);
+        canvasRef.current?.requestRenderAll();
+      };
+      imgEl.src = b64;
+    }
+    showToast("Screenshot captured and ready to edit!");
+    
+    // Bring window to front
+    const win = getCurrentWindow();
+    win.unminimize().then(() => win.setFocus()).catch(console.error);
+  }, [showToast]);
 
   // Register Global Shortcut
   useEffect(() => {
@@ -30,32 +55,15 @@ export default function App() {
     register(shortcut, async (event) => {
       if (event.state === "Pressed") {
         try {
-          // 1. Capture screen
-          const b64 = await invoke<string>("capture_fullscreen");
+          // Show the Capture Pill overlay
+          setIsCaptureOverlay(true);
           
-          // 2. Load into canvas
-          if (canvasRef.current) {
-            const imgEl = new Image();
-            imgEl.onload = () => {
-              const fImg = new fabric.FabricImage(imgEl, {
-                left: 0,
-                top: 0,
-                selectable: true,
-              });
-              canvasRef.current?.clear();
-              canvasRef.current?.add(fImg);
-              canvasRef.current?.requestRenderAll();
-            };
-            imgEl.src = b64;
-          }
-          
-          // 3. Bring window to front
+          // Bring window to front
           const win = getCurrentWindow();
           await win.unminimize();
           await win.setFocus();
-          showToast("Screenshot captured and ready to edit!");
         } catch (e) {
-          console.error("Failed to capture screenshot:", e);
+          console.error("Failed to trigger capture overlay:", e);
         }
       }
     }).catch(console.error);
@@ -63,20 +71,26 @@ export default function App() {
     return () => {
       unregister(shortcut).catch(console.error);
     };
-  }, [showToast]);
+  }, [setIsCaptureOverlay]);
 
   return (
-    <div className="app-shell">
-      <TitleBar />
-      <MenuBar canvasRef={canvasRef} />
-      <Toolbar canvasRef={canvasRef} panelVisible={panelVisible} onTogglePanel={() => setPanelVisible(v => !v)} />
-      <div className="workspace">
-        {panelVisible && (
-          <ShapePanel canvasRef={canvasRef} />
-        )}
-        <CanvasArea onCanvasReady={setCanvas} />
-      </div>
-      <StatusBar />
+    <div className={`app-shell ${isCaptureOverlay ? "overlay-mode" : ""}`}>
+      {isCaptureOverlay ? (
+        <CapturePill onCapture={handleCapture} />
+      ) : (
+        <>
+          <TitleBar />
+          <MenuBar canvasRef={canvasRef} />
+          <Toolbar canvasRef={canvasRef} panelVisible={panelVisible} onTogglePanel={() => setPanelVisible(v => !v)} />
+          <div className="workspace">
+            {panelVisible && (
+              <ShapePanel canvasRef={canvasRef} />
+            )}
+            <CanvasArea onCanvasReady={setCanvas} />
+          </div>
+          <StatusBar />
+        </>
+      )}
       <Toast />
     </div>
   );

@@ -1,16 +1,19 @@
-name: 'Release Windows'
+name: 'Release'
 
 on:
   push:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   release:
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows-latest]
+        platform: [macos-latest, windows-latest]
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -23,8 +26,6 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-pc-windows-msvc
 
       - name: Install frontend dependencies
         run: npm install
@@ -39,4 +40,3 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           prerelease: false
-          args: --target x86_64-pc-windows-msvc

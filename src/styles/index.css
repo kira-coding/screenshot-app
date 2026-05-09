@@ -823,3 +823,79 @@ body {
   font-weight: 600;
   box-shadow: var(--shadow-sm);
 }
+
+/* ---------- Capture Pill Overlay ---------- */
+.capture-pill-container {
+  position: fixed;
+  bottom: 40px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.capture-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 9999px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  pointer-events: auto;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pill-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #4B5563;
+  transition: all var(--transition-fast);
+}
+
+.pill-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #111827;
+}
+
+.pill-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.pill-btn.close-btn {
+  background: #5BBFAD;
+  color: white;
+  margin-left: 8px;
+}
+
+.pill-btn.close-btn:hover {
+  background: #4AA898;
+  transform: scale(1.05);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* App shell overlay mode */
+.app-shell.overlay-mode {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+

@@ -9,6 +9,10 @@ export type AppMode = "screenshot" | "whiteboard";
 export type BorderStyle = "solid" | "dashed" | "dotted";
 
 export interface AppState {
+  /* Capture Overlay State */
+  isCaptureOverlay: boolean;
+  setIsCaptureOverlay: (v: boolean) => void;
+
   /* Mode */
   appMode: AppMode;
   setAppMode: (m: AppMode) => void;
@@ -78,6 +82,9 @@ export interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
+  isCaptureOverlay: false,
+  setIsCaptureOverlay: (v) => set({ isCaptureOverlay: v }),
+
   appMode: "screenshot",
   setAppMode: (m) => set({ appMode: m, filePath: null, fileName: "Untitled", isDirty: false }),
 
