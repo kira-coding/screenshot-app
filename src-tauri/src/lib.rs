@@ -14,6 +14,8 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![])))
+        .plugin(tauri_plugin_store::Builder::new().build())
         .setup(|app| {
             let take_screenshot_i = MenuItem::with_id(app, "take_screenshot", "Take Screenshot", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;

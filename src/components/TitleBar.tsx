@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useAppStore } from "../store/appStore";
 
 export default function TitleBar() {
-  const { fileName, isDirty } = useAppStore();
+  const { fileName, isDirty, setIsSettingsOpen } = useAppStore();
 
   const handleMinimize = () => invoke("minimize_window").catch(() => {});
   const handleMaximize = () => invoke("toggle_maximize").catch(() => {});
@@ -39,7 +39,7 @@ export default function TitleBar() {
         <div className="titlebar-divider" />
         <button className="titlebar-btn icon-only" title="Copy"><CopyIcon /></button>
         <button className="titlebar-btn icon-only" title="Print"><PrintIcon /></button>
-        <button className="titlebar-btn icon-only" title="Settings"><CommandIcon /></button>
+        <button className="titlebar-btn icon-only" title="Settings" onClick={() => setIsSettingsOpen(true)}><CommandIcon /></button>
         <button className="titlebar-btn icon-only" title="User"><UserIcon /></button>
         <button className="titlebar-btn icon-only" title="Wand"><WandIcon /></button>
         <button className="titlebar-btn icon-only" title="Layout"><LayoutIcon /></button>

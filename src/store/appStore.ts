@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { Store } from '@tauri-apps/plugin-store';
+import { isEnabled } from '@tauri-apps/plugin-autostart';
 
 export type ToolType =
   | "select" | "move" | "rect" | "circle" | "triangle" | "hexagon"
@@ -79,6 +81,13 @@ export interface AppState {
   /* Active menu */
   activeMenu: string | null;
   setActiveMenu: (m: string | null) => void;
+
+  /* Settings */
+  autoStart: boolean;
+  setAutoStart: (v: boolean) => void;
+  isSettingsOpen: boolean;
+  setIsSettingsOpen: (v: boolean) => void;
+  loadSettings: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -142,4 +151,23 @@ export const useAppStore = create<AppState>((set) => ({
 
   activeMenu: null,
   setActiveMenu: (m) => set({ activeMenu: m }),
+
+  autoStart: false,
+  setAutoStart: (v) => set({ autoStart: v }),
+  isSettingsOpen: false,
+  setIsSettingsOpen: (v) => set({ isSettingsOpen: v }),
+  loadSettings: async () => {
+    try {
+      const store = await Store.load('settings.json');
+      const savedShortcut = await store.get<{value: string}>('globalShortcut');
+      if (savedShortcut && savedShortcut.value) {
+        set({ globalShortcut: savedShortcut.value });
+      }
+      
+      const autoStartEnabled = await isEnabled();
+      set({ autoStart: autoStartEnabled });
+    } catch (e) {
+      console.error("Failed to load settings:", e);
+    }
+  },
 }));

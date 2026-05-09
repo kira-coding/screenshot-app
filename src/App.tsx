@@ -10,6 +10,7 @@ import CanvasArea from "./components/CanvasArea";
 import StatusBar from "./components/StatusBar";
 import Toast from "./components/Toast";
 import CapturePill from "./components/CapturePill";
+import SettingsModal from "./components/SettingsModal";
 import { useAppStore } from "./store/appStore";
 import type { Canvas as FabricCanvas } from "fabric";
 
@@ -20,6 +21,13 @@ export default function App() {
   const showToast = useAppStore((s) => s.showToast);
   const isCaptureOverlay = useAppStore((s) => s.isCaptureOverlay);
   const setIsCaptureOverlay = useAppStore((s) => s.setIsCaptureOverlay);
+  const globalShortcut = useAppStore((s) => s.globalShortcut);
+  const loadSettings = useAppStore((s) => s.loadSettings);
+
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const setCanvas = useCallback((c: FabricCanvas) => {
     canvasRef.current = c;
@@ -49,9 +57,9 @@ export default function App() {
 
   // Register Global Shortcut
   useEffect(() => {
-    const shortcut = "CommandOrControl+Shift+S";
+    if (!globalShortcut) return;
     
-    register(shortcut, async (event) => {
+    register(globalShortcut, async (event) => {
       if (event.state === "Pressed") {
         try {
           // Show the Capture Pill overlay
@@ -68,9 +76,9 @@ export default function App() {
     }).catch(console.error);
 
     return () => {
-      unregister(shortcut).catch(console.error);
+      unregister(globalShortcut).catch(console.error);
     };
-  }, [setIsCaptureOverlay]);
+  }, [globalShortcut, setIsCaptureOverlay]);
 
   return (
     <div className={`app-shell ${isCaptureOverlay ? "overlay-mode" : ""}`}>
@@ -88,6 +96,7 @@ export default function App() {
         </>
       )}
       <Toast />
+      <SettingsModal />
     </div>
   );
 }
