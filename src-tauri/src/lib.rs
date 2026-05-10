@@ -3,7 +3,7 @@ pub mod commands;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    Emitter
+    Emitter, Manager
 };
 
 // Tauri requires a lib.rs for mobile / cdylib usage
@@ -19,6 +19,13 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![])))
         .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            let _ = app.get_webview_window("main").map(|w| {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            });
+        }))
         .setup(|app| {
             let take_screenshot_i = MenuItem::with_id(app, "take_screenshot", "Full Screenshot", true, None::<&str>)?;
             let capture_region_i = MenuItem::with_id(app, "capture_region", "Capture Region", true, None::<&str>)?;

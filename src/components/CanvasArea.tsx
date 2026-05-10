@@ -156,6 +156,17 @@ export default function CanvasArea({ onCanvasReady }: Props) {
       setIsDirty(true);
     });
 
+    canvas.on("object:scaling", (e) => {
+      const obj = e.target;
+      if (obj && (obj as any).data?.type === "arrow") {
+        // Prevent distortion by resetting scale and eventually 
+        // we could recalculate coordinates, but for now 
+        // resetting scale prevents the massive head.
+        obj.set({ scaleX: 1, scaleY: 1 });
+      }
+      setIsDirty(true);
+    });
+
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       ro.disconnect();
@@ -247,7 +258,8 @@ export default function CanvasArea({ onCanvasReady }: Props) {
     if (activeTool === "move") {
       canvas.setCursor("grabbing");
       isDrawingRef.current = true;
-      originRef.current = { x: e.clientX, y: e.clientY };
+      (originRef.current as any).screenX = e.clientX;
+      (originRef.current as any).screenY = e.clientY;
       return;
     }
 
@@ -372,10 +384,15 @@ export default function CanvasArea({ onCanvasReady }: Props) {
     const shape = activeShapeRef.current;
 
     if (activeTool === "move") {
-      const deltaX = e.clientX - ox;
-      const deltaY = e.clientY - oy;
+      const sx = (originRef.current as any).screenX;
+      const sy = (originRef.current as any).screenY;
+      const deltaX = e.clientX - sx;
+      const deltaY = e.clientY - sy;
+      
       canvas.relativePan(new fabric.Point(deltaX, deltaY));
-      originRef.current = { x: e.clientX, y: e.clientY };
+      
+      (originRef.current as any).screenX = e.clientX;
+      (originRef.current as any).screenY = e.clientY;
       return;
     }
 
@@ -411,20 +428,36 @@ export default function CanvasArea({ onCanvasReady }: Props) {
         const oy2 = data.oy ?? originRef.current.y;
         const dx = pt.x - ox2;
         const dy = pt.y - oy2;
-        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
         const len = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
         const objects = group.getObjects();
         const line = objects[0] as fabric.Line;
         const head = objects[1] as fabric.Triangle;
-        const headSize = Math.max(10, strokeWidth * 4);
-        const headLen = Math.max(14, strokeWidth * 5);
+        
+        // Scale head based on stroke and length
+        let headSize = Math.max(10, strokeWidth * 3);
+        let headLen = Math.max(12, strokeWidth * 4);
+        
+        // If arrow is too short, shrink the head
+        if (len < headLen * 2) {
+          const factor = Math.max(0.2, len / (headLen * 2));
+          headSize *= factor;
+          headLen *= factor;
+        }
 
-        // Update line end to stop short of the tip
-        const stopX = ox2 + (dx / Math.max(len, 1)) * Math.max(0, len - headLen * 0.6);
-        const stopY = oy2 + (dy / Math.max(len, 1)) * Math.max(0, len - headLen * 0.6);
-        line.set({ x1: ox2, y1: oy2, x2: stopX, y2: stopY });
-        head.set({ left: pt.x, top: pt.y, angle: angle + 90, width: headSize, height: headLen });
+        const stopX = ox2 + (dx / Math.max(len, 1)) * Math.max(0, len - headLen * 0.8);
+        const stopY = oy2 + (dy / Math.max(len, 1)) * Math.max(0, len - headLen * 0.8);
+        
+        line.set({ x1: ox2, y1: oy2, x2: stopX, y2: stopY, strokeWidth });
+        head.set({ 
+          left: pt.x, top: pt.y, 
+          angle: angle + 90, 
+          width: headSize, 
+          height: headLen,
+          fill: line.stroke 
+        });
+        
         head.setCoords();
         group.set({ left: 0, top: 0 });
         break;
@@ -447,24 +480,31 @@ export default function CanvasArea({ onCanvasReady }: Props) {
 
     const shape = activeShapeRef.current;
     if (shape) {
+      if (activeTool === "arrow" || activeTool === "line" || activeTool === "rect" || activeTool === "circle") {
+        const rect = shape.getBoundingRect();
+        if (rect.width < 3 && rect.height < 3) {
+          canvas.remove(shape);
+          canvas.requestRenderAll();
+          activeShapeRef.current = null;
+          return;
+        }
+      }
+
       if (activeTool === "crop") {
         const rect = shape.getBoundingRect();
-        // Simple crop: resize canvas to rect and reposition objects
-        // In a real app, this might be more complex, but let's do a simple version:
-        // Actually, let's just use the rect for exporting or provide feedback.
-        // For "ScreenshotApp", crop usually means "keep this part".
-        // Let's implement actual canvas resizing:
         canvas.remove(shape);
         
-        // Save current content as image to re-render it cropped? 
-        // Better: shift all objects and resize canvas.
         const left = rect.left;
         const top = rect.top;
         const width = rect.width;
         const height = rect.height;
 
-        if (width > 5 && height > 5) {
-          // Shift ALL objects (including background images)
+        if (width > 10 && height > 10) {
+          // 1. Reset zoom/pan so coordinates are absolute
+          canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+          setZoom(100);
+
+          // 2. Shift all objects
           const objects = canvas.getObjects();
           objects.forEach(obj => {
             obj.set({
@@ -474,8 +514,13 @@ export default function CanvasArea({ onCanvasReady }: Props) {
             obj.setCoords();
           });
 
+          // 3. Resize canvas
           canvas.setDimensions({ width, height });
           canvas.requestRenderAll();
+          
+          // 4. Update state
+          pushHistory(canvas, setCanUndo, setCanRedo);
+          setIsDirty(true);
           showToast("Canvas cropped!");
         }
         setActiveTool("select");

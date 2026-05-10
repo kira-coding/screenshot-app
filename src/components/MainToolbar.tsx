@@ -53,11 +53,21 @@ export default function MainToolbar({ canvasRef }: Props) {
         const url = URL.createObjectURL(blob);
         const imgEl = new Image();
         imgEl.onload = () => {
-          const fImg = new fabric.FabricImage(imgEl, { left: 100, top: 100, selectable: true });
-          fImg.scaleToWidth(Math.min(imgEl.width, 500));
-          canvasRef.current?.add(fImg);
-          canvasRef.current?.setActiveObject(fImg);
-          canvasRef.current?.requestRenderAll();
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          
+          const center = canvas.getCenterPoint();
+          const fImg = new fabric.FabricImage(imgEl, { 
+            left: center.x, 
+            top: center.y, 
+            originX: 'center', 
+            originY: 'center',
+            selectable: true 
+          });
+          fImg.scaleToWidth(Math.min(imgEl.width, canvas.width! * 0.8));
+          canvas.add(fImg);
+          canvas.setActiveObject(fImg);
+          canvas.requestRenderAll();
           URL.revokeObjectURL(url);
         };
         imgEl.src = url;

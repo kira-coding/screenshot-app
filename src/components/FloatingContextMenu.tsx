@@ -123,9 +123,9 @@ export default function FloatingContextMenu({ canvasRef }: Props) {
             Inter <ChevronDownIcon />
           </button>
           <div className="menu-divider" />
-          <button className="menu-btn" onClick={() => handleFontSize(-2)}>−</button>
+          <button className="menu-btn" onClick={() => handleFontSize(-2)} title="Decrease Font"><MinusIcon /></button>
           <span className="menu-text">{Math.round((activeObj as any)?.fontSize || 16)}</span>
-          <button className="menu-btn" onClick={() => handleFontSize(2)}>+</button>
+          <button className="menu-btn" onClick={() => handleFontSize(2)} title="Increase Font"><PlusIcon /></button>
           <div className="menu-divider" />
           <button className="menu-btn" style={{ fontWeight: 'bold' }} onClick={() => updateObj('fontWeight', (activeObj as any).fontWeight === 'bold' ? 'normal' : 'bold')}>B</button>
           <button className="menu-btn" style={{ textDecoration: 'underline' }} onClick={() => updateObj('underline', !(activeObj as any).underline)}>U</button>
@@ -144,9 +144,9 @@ export default function FloatingContextMenu({ canvasRef }: Props) {
         </>
       ) : isArrow ? (
         <>
-          <button className="menu-btn" onClick={() => handleStrokeWidth(-1)}>−</button>
+          <button className="menu-btn" onClick={() => handleStrokeWidth(-1)} title="Decrease Width"><MinusIcon /></button>
           <span className="menu-text">{Math.round((activeObj as any)?.strokeWidth || 2)}</span>
-          <button className="menu-btn" onClick={() => handleStrokeWidth(1)}>+</button>
+          <button className="menu-btn" onClick={() => handleStrokeWidth(1)} title="Increase Width"><PlusIcon /></button>
           <label className="menu-btn color-indicator" style={{ color: String(activeObj.stroke || '#5BBFAD'), cursor: 'pointer' }}>
             <circle cx="12" cy="12" r="6" fill="currentColor" />
             <input type="color" value={String(activeObj.stroke || '#5BBFAD').startsWith('#') ? String(activeObj.stroke || '#5BBFAD') : '#5BBFAD'} onChange={(e) => updateObj('stroke', e.target.value)} style={{ opacity: 0, position: 'absolute', width: 0, height: 0 }} />
@@ -158,9 +158,9 @@ export default function FloatingContextMenu({ canvasRef }: Props) {
       ) : (
         // Standard Shape
         <>
-          <button className="menu-btn" onClick={() => handleStrokeWidth(-1)}>−</button>
+          <button className="menu-btn" onClick={() => handleStrokeWidth(-1)} title="Decrease Width"><MinusIcon /></button>
           <span className="menu-text">{Math.round((activeObj as any)?.strokeWidth || 2)}</span>
-          <button className="menu-btn" onClick={() => handleStrokeWidth(1)}>+</button>
+          <button className="menu-btn" onClick={() => handleStrokeWidth(1)} title="Increase Width"><PlusIcon /></button>
           <label className="menu-btn color-indicator" style={{ color: String(activeObj.stroke || '#5BBFAD'), cursor: 'pointer' }}>
             <circle cx="12" cy="12" r="6" fill="currentColor" />
             <input type="color" value={String(activeObj.stroke || '#5BBFAD').startsWith('#') ? String(activeObj.stroke || '#5BBFAD') : '#5BBFAD'} onChange={(e) => updateObj('stroke', e.target.value)} style={{ opacity: 0, position: 'absolute', width: 0, height: 0 }} />
@@ -215,3 +215,5 @@ function DashIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="curren
 function CapIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><circle cx="18" cy="12" r="3"/><line x1="4" y1="12" x2="15" y2="12"/></svg>; }
 function CopyIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>; }
 function VideoIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>; }
+function PlusIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>; }
+function MinusIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14"><line x1="5" y1="12" x2="19" y2="12"/></svg>; }
