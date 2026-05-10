@@ -9,7 +9,7 @@ interface Props {
 export default function FloatingContextMenu({ canvasRef }: Props) {
   const [activeObj, setActiveObj] = useState<fabric.Object | null>(null);
   const [position, setPosition] = useState({ top: -9999, left: -9999 });
-  const { showToast } = useAppStore();
+  const { showToast, setIsRecordOverlay } = useAppStore();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -175,6 +175,10 @@ export default function FloatingContextMenu({ canvasRef }: Props) {
       )}
 
       <div className="menu-divider" />
+      <button className="menu-btn" title="Capture Clip" onClick={() => setIsRecordOverlay(true)}>
+        <VideoIcon />
+      </button>
+      <div className="menu-divider" />
       <button className="menu-btn danger" onClick={handleDelete} title="Delete">
         <TrashIcon />
       </button>
@@ -210,3 +214,4 @@ function LineIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="curren
 function DashIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><line x1="4" y1="12" x2="8" y2="12"/><line x1="12" y1="12" x2="16" y2="12"/><line x1="20" y1="12" x2="21" y2="12"/></svg>; }
 function CapIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><circle cx="18" cy="12" r="3"/><line x1="4" y1="12" x2="15" y2="12"/></svg>; }
 function CopyIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>; }
+function VideoIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>; }

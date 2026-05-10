@@ -8,6 +8,11 @@ const isMac = (() => {
   try { return navigator.userAgent.includes('Mac'); } catch { return false; }
 })();
 
+function formatShortcut(s: string) {
+  if (!s) return "";
+  return s.replace("CommandOrControl", isMac ? "Command" : "Control");
+}
+
 export default function SettingsModal() {
   const { 
     isSettingsOpen, 
@@ -177,7 +182,7 @@ export default function SettingsModal() {
               onKeyDown={handleKeyDown}
               tabIndex={0}
             >
-              {shortcutRecording ? "Press shortcut... (Esc to cancel)" : tempShortcut}
+              {shortcutRecording ? "Press shortcut... (Esc to cancel)" : formatShortcut(tempShortcut)}
             </div>
           </div>
 
@@ -192,7 +197,7 @@ export default function SettingsModal() {
               onKeyDown={handleRecordKeyDown}
               tabIndex={0}
             >
-              {recordShortcutRecording ? "Press shortcut... (Esc to cancel)" : recordTempShortcut}
+              {recordShortcutRecording ? "Press shortcut... (Esc to cancel)" : formatShortcut(recordTempShortcut)}
             </div>
           </div>
         </div>

@@ -20,7 +20,12 @@ pub fn toggle_maximize(window: tauri::Window) {
 
 #[tauri::command]
 pub fn close_window(window: tauri::Window) {
-    let _ = window.close();
+    let _ = window.hide();
+}
+
+#[tauri::command]
+pub fn hide_window(window: tauri::Window) {
+    let _ = window.hide();
 }
 
 #[tauri::command]

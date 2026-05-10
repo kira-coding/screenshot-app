@@ -265,7 +265,7 @@ export default function CanvasArea({ onCanvasReady }: Props) {
         top: pt.y,
         width: 0,
         height: 0,
-        fill: "rgba(0,0,0,0.3)",
+        fill: "rgba(91, 191, 173, 0.1)",
         stroke: "#5BBFAD",
         strokeWidth: 1,
         strokeDashArray: [5, 5],
@@ -464,11 +464,16 @@ export default function CanvasArea({ onCanvasReady }: Props) {
         const height = rect.height;
 
         if (width > 5 && height > 5) {
-          canvas.getObjects().forEach(obj => {
-            obj.left -= left;
-            obj.top -= top;
+          // Shift ALL objects (including background images)
+          const objects = canvas.getObjects();
+          objects.forEach(obj => {
+            obj.set({
+              left: (obj.left || 0) - left,
+              top: (obj.top || 0) - top
+            });
             obj.setCoords();
           });
+
           canvas.setDimensions({ width, height });
           canvas.requestRenderAll();
           showToast("Canvas cropped!");

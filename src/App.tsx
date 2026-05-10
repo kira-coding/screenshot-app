@@ -30,6 +30,10 @@ export default function App() {
   const recordShortcut = useAppStore((s) => s.recordShortcut);
   const loadSettings = useAppStore((s) => s.loadSettings);
 
+  const [selection, setSelection] = useState<{ x: number, y: number, w: number, h: number } | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const selectionStart = useRef({ x: 0, y: 0 });
+
   // Load settings on mount
   useEffect(() => {
     loadSettings();
@@ -73,6 +77,22 @@ export default function App() {
         await win.setFocus();
       });
       unlisteners.push(u1);
+
+      const uCaptureRegion = await listen("capture_region", async () => {
+        setIsCaptureOverlay(true);
+        const win = getCurrentWindow();
+        await win.unminimize();
+        await win.setFocus();
+      });
+      unlisteners.push(uCaptureRegion);
+
+      const uRecordClip = await listen("record_clip", async () => {
+        setIsRecordOverlay(true);
+        const win = getCurrentWindow();
+        await win.unminimize();
+        await win.setFocus();
+      });
+      unlisteners.push(uRecordClip);
 
       const u2 = await listen("open_whiteboard", async () => {
         setAppMode("whiteboard");
@@ -179,9 +199,104 @@ export default function App() {
 
   const isAnyOverlay = isCaptureOverlay || isRecordOverlay;
 
+  // Handle Escape to exit overlay
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isCaptureOverlay) setIsCaptureOverlay(false);
+        if (isRecordOverlay) setIsRecordOverlay(false);
+      }
+    };
+    if (isAnyOverlay) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isAnyOverlay, isCaptureOverlay, isRecordOverlay, setIsCaptureOverlay, setIsRecordOverlay]);
+  
+  const handleOverlayMouseDown = (e: React.MouseEvent) => {
+    if (!isCaptureOverlay) return;
+    setIsSelecting(true);
+    selectionStart.current = { x: e.clientX, y: e.clientY };
+    setSelection({ x: e.clientX, y: e.clientY, w: 0, h: 0 });
+  };
+
+  const handleOverlayMouseMove = (e: React.MouseEvent) => {
+    if (!isSelecting) return;
+    const x = Math.min(e.clientX, selectionStart.current.x);
+    const y = Math.min(e.clientY, selectionStart.current.y);
+    const w = Math.abs(e.clientX - selectionStart.current.x);
+    const h = Math.abs(e.clientY - selectionStart.current.y);
+    setSelection({ x, y, w, h });
+  };
+
+  const handleOverlayMouseUp = async () => {
+    if (!isSelecting || !selection) return;
+    setIsSelecting(false);
+    
+    if (selection.w > 5 && selection.h > 5) {
+      try {
+        // Capture the region
+        // We hide the window first to get a clean capture of what's behind
+        const win = getCurrentWindow();
+        await win.hide();
+        await new Promise(r => setTimeout(r, 200));
+        
+        const b64 = await invoke<string>("capture_region", { 
+          x: Math.round(selection.x), 
+          y: Math.round(selection.y), 
+          width: Math.round(selection.w), 
+          height: Math.round(selection.h) 
+        });
+        
+        await win.show();
+        await win.unmaximize();
+        handleCapture(b64);
+        setIsCaptureOverlay(false);
+      } catch (e) {
+        showToast(`Region capture failed: ${e}`, "error");
+        const win = getCurrentWindow();
+        await win.show();
+      }
+    }
+    setSelection(null);
+  };
+
+  // Manage window state for overlay modes
+  useEffect(() => {
+    const win = getCurrentWindow();
+    if (isAnyOverlay) {
+      win.setAlwaysOnTop(true).catch(console.error);
+      win.maximize().catch(console.error);
+    } else {
+      win.setAlwaysOnTop(false).catch(console.error);
+      win.unmaximize().catch(console.error);
+    }
+  }, [isAnyOverlay]);
+
   return (
-    <div className={`app-shell ${isAnyOverlay ? "overlay-mode" : ""}`}>
-      {isCaptureOverlay && <CapturePill onCapture={handleCapture} />}
+    <div 
+      className={`app-shell ${isAnyOverlay ? "overlay-mode" : ""}`}
+      onMouseDown={handleOverlayMouseDown}
+      onMouseMove={handleOverlayMouseMove}
+      onMouseUp={handleOverlayMouseUp}
+    >
+      {isCaptureOverlay && (
+        <>
+          <div className="capture-dim-overlay" />
+          {selection && (
+            <div 
+              className="region-selection-rect" 
+              style={{
+                left: selection.x,
+                top: selection.y,
+                width: selection.w,
+                height: selection.h
+              }}
+            />
+          )}
+          <CapturePill onCapture={handleCapture} />
+        </>
+      )}
       {isRecordOverlay && <RecordPill />}
       
       {!isAnyOverlay && (

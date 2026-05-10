@@ -20,11 +20,22 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec![])))
         .plugin(tauri_plugin_store::Builder::new().build())
         .setup(|app| {
-            let take_screenshot_i = MenuItem::with_id(app, "take_screenshot", "Take Screenshot", true, None::<&str>)?;
+            let take_screenshot_i = MenuItem::with_id(app, "take_screenshot", "Full Screenshot", true, None::<&str>)?;
+            let capture_region_i = MenuItem::with_id(app, "capture_region", "Capture Region", true, None::<&str>)?;
+            let record_clip_i = MenuItem::with_id(app, "record_clip", "Record Clip", true, None::<&str>)?;
             let open_whiteboard_i = MenuItem::with_id(app, "open_whiteboard", "Open Whiteboard", true, None::<&str>)?;
             let import_image_i = MenuItem::with_id(app, "import_image", "Import Image", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&take_screenshot_i, &open_whiteboard_i, &import_image_i, &quit_i])?;
+            let menu = Menu::with_items(app, &[
+                &take_screenshot_i, 
+                &capture_region_i, 
+                &record_clip_i, 
+                &MenuItem::separator(app)?,
+                &open_whiteboard_i, 
+                &import_image_i, 
+                &MenuItem::separator(app)?,
+                &quit_i
+            ])?;
 
             let mut tray_builder = TrayIconBuilder::new().menu(&menu);
             
@@ -37,6 +48,12 @@ pub fn run() {
                     match event.id.as_ref() {
                         "take_screenshot" => {
                             let _ = app.emit("take_screenshot", ());
+                        }
+                        "capture_region" => {
+                            let _ = app.emit("capture_region", ());
+                        }
+                        "record_clip" => {
+                            let _ = app.emit("record_clip", ());
                         }
                         "open_whiteboard" => {
                             let _ = app.emit("open_whiteboard", ());
@@ -61,7 +78,8 @@ pub fn run() {
             commands::set_always_on_top,
             commands::capture_hiding_window,
             commands::capture_fullscreen,
-            commands::capture_region
+            commands::capture_region,
+            commands::hide_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
