@@ -1078,6 +1078,7 @@ body {
   background: transparent !important;
   box-shadow: none !important;
   border-radius: 0 !important;
+  border: none !important;
   cursor: crosshair;
 }
 

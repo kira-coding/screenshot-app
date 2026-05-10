@@ -73,6 +73,7 @@ export default function App() {
       const u1 = await listen("take_screenshot", async () => {
         setIsCaptureOverlay(true);
         const win = getCurrentWindow();
+        await win.show();
         await win.unminimize();
         await win.setFocus();
       });
@@ -81,6 +82,7 @@ export default function App() {
       const uCaptureRegion = await listen("capture_region", async () => {
         setIsCaptureOverlay(true);
         const win = getCurrentWindow();
+        await win.show();
         await win.unminimize();
         await win.setFocus();
       });
@@ -89,6 +91,7 @@ export default function App() {
       const uRecordClip = await listen("record_clip", async () => {
         setIsRecordOverlay(true);
         const win = getCurrentWindow();
+        await win.show();
         await win.unminimize();
         await win.setFocus();
       });
@@ -96,6 +99,11 @@ export default function App() {
 
       const u2 = await listen("open_whiteboard", async () => {
         setAppMode("whiteboard");
+        if (canvasRef.current) {
+          canvasRef.current.clear();
+          canvasRef.current.backgroundColor = "#E8F0EF";
+          canvasRef.current.requestRenderAll();
+        }
         setIsCaptureOverlay(false);
         setIsRecordOverlay(false);
         const win = getCurrentWindow();
@@ -161,6 +169,7 @@ export default function App() {
           
           // Bring window to front
           const win = getCurrentWindow();
+          await win.show();
           await win.unminimize();
           await win.setFocus();
         } catch (e) {
@@ -184,6 +193,7 @@ export default function App() {
           setIsRecordOverlay(true);
           setIsCaptureOverlay(false);
           const win = getCurrentWindow();
+          await win.show();
           await win.unminimize();
           await win.setFocus();
         } catch (e) {
@@ -239,7 +249,7 @@ export default function App() {
         // We hide the window first to get a clean capture of what's behind
         const win = getCurrentWindow();
         await win.hide();
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 400));
         
         const b64 = await invoke<string>("capture_region", { 
           x: Math.round(selection.x), 
@@ -266,9 +276,10 @@ export default function App() {
     const win = getCurrentWindow();
     if (isAnyOverlay) {
       win.setAlwaysOnTop(true).catch(console.error);
-      win.maximize().catch(console.error);
+      win.setFullscreen(true).catch(console.error);
     } else {
       win.setAlwaysOnTop(false).catch(console.error);
+      win.setFullscreen(false).catch(console.error);
       win.unmaximize().catch(console.error);
     }
   }, [isAnyOverlay]);
