@@ -75,6 +75,7 @@ export default function App() {
         const win = getCurrentWindow();
         await win.show();
         await win.unminimize();
+        await win.setFullscreen(true);
         await win.setFocus();
       });
       unlisteners.push(u1);
@@ -84,6 +85,7 @@ export default function App() {
         const win = getCurrentWindow();
         await win.show();
         await win.unminimize();
+        await win.setFullscreen(true);
         await win.setFocus();
       });
       unlisteners.push(uCaptureRegion);
@@ -93,6 +95,7 @@ export default function App() {
         const win = getCurrentWindow();
         await win.show();
         await win.unminimize();
+        await win.setFullscreen(true);
         await win.setFocus();
       });
       unlisteners.push(uRecordClip);
@@ -171,6 +174,7 @@ export default function App() {
           const win = getCurrentWindow();
           await win.show();
           await win.unminimize();
+          await win.setFullscreen(true);
           await win.setFocus();
         } catch (e) {
           console.error("Failed to trigger capture overlay:", e);
@@ -213,6 +217,8 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        const win = getCurrentWindow();
+        win.setFullscreen(false).catch(console.error);
         if (isCaptureOverlay) setIsCaptureOverlay(false);
         if (isRecordOverlay) setIsRecordOverlay(false);
       }
@@ -259,6 +265,7 @@ export default function App() {
         });
         
         await win.show();
+        await win.setFullscreen(false);
         await win.unmaximize();
         handleCapture(b64);
         setIsCaptureOverlay(false);
