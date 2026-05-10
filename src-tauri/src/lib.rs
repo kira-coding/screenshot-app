@@ -1,7 +1,7 @@
 pub mod commands;
 
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
     Emitter
 };
@@ -30,10 +30,10 @@ pub fn run() {
                 &take_screenshot_i, 
                 &capture_region_i, 
                 &record_clip_i, 
-                &MenuItem::separator(app)?,
+                &PredefinedMenuItem::separator(app)?,
                 &open_whiteboard_i, 
                 &import_image_i, 
-                &MenuItem::separator(app)?,
+                &PredefinedMenuItem::separator(app)?,
                 &quit_i
             ])?;
 
